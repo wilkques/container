@@ -1,0 +1,7 @@
+{
+    "name": "wilkques/container",
+    "license": "MIT",
+    "require": {
+        "php": ">=5.4"
+    }
+}
