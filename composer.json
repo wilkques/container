@@ -1,7 +1,13 @@
 {
     "name": "wilkques/container",
     "license": "MIT",
+    "type": "library",
     "require": {
         "php": ">=5.4"
+    },
+    "autoload": {
+        "psr-4": {
+            "Wilkques\\Database\\": "src"
+        }
     }
 }
