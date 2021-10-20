@@ -7,7 +7,7 @@
     },
     "autoload": {
         "psr-4": {
-            "Wilkques\\Database\\": "src"
+            "Wilkques\\Container\\": "src"
         }
     }
 }
