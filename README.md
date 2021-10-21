@@ -1,5 +1,8 @@
 # Container
 
+[![Latest Stable Version](https://poser.pugx.org/wilkques/container/v/stable)](https://packagist.org/packages/wilkques/container)
+[![License](https://poser.pugx.org/wilkques/container/license)](https://packagist.org/packages/wilkques/container)
+
 ## How to use
 
 ```php
