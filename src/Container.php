@@ -2,13 +2,19 @@
 
 namespace Wilkques\Container;
 
+/**
+ * @see [wilkques](https://github.com/wilkques/container)
+ * 
+ * create by: wilkques
+ */
 class Container
 {
+    /** @var array */
     protected static $map = [];
 
     /**
-     * @param string $className
-     * @param object|callable|Closure $object
+     * @param string|array $className
+     * @param object|callable|Closure|null $object
      */
     public static function register($className, $object = null)
     {
@@ -28,11 +34,75 @@ class Container
     }
 
     /**
+     * @param string $className
+     * 
      * @return mixed
      */
     public static function get($className)
     {
+        if (!class_exists($className, true)) {
+            return null;
+        }
+
+        if (class_exists($className, true) && !array_key_exists($className, static::getMaps())) {
+            return static::resolve($className);
+        }
+
         return static::$map[$className];
+    }
+
+    /**
+     * @param string $className
+     * 
+     * @return object
+     */
+    public static function resolve($className)
+    {
+        if (!class_exists($className, true)) {
+            return null;
+        }
+
+        if ($class = static::get($className)) return $class;
+
+        $reflectionClass = new \ReflectionClass($className);
+        $reflectionConstructor = $reflectionClass->getConstructor();
+        $reflectionParams = $reflectionConstructor->getParameters();
+
+        $arguments = [];
+
+        foreach ($reflectionParams as $param) {
+            $classNameForArguments = $param->getClass()->getName();
+
+            $arguments[] = static::get($class);
+        }
+
+        if (empty($arguments)) {
+            return static::registerWithResolve(
+                $classNameForArguments, 
+                new $classNameForArguments()
+            );
+        }
+
+        return static::registerWithResolve(
+            $className, 
+            $reflectionClass->newInstanceArgs($arguments)
+        );
+    }
+
+    /**
+     * @param string $className
+     * @param object $class
+     * 
+     * @return object
+     */
+    public static function registerWithResolve($className, $class)
+    {
+        static::register(
+            $className,
+            $class
+        );
+
+        return static::get($className);
     }
 
     /**
