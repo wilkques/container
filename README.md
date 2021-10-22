@@ -3,10 +3,6 @@
 [![Latest Stable Version](https://poser.pugx.org/wilkques/container/v/stable)](https://packagist.org/packages/wilkques/container)
 [![License](https://poser.pugx.org/wilkques/container/license)](https://packagist.org/packages/wilkques/container)
 
-## Env
-
-1. version 0.0.1
-
 ## How to use
 
 ```php
