@@ -62,7 +62,9 @@ class Container
             return null;
         }
 
-        if ($class = static::get($className)) return $class;
+        if (array_key_exists($className, static::getMaps())) {
+            return static::$map[$className];
+        }
 
         $reflectionClass = new \ReflectionClass($className);
         $reflectionConstructor = $reflectionClass->getConstructor();
