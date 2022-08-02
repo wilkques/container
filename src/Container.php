@@ -75,7 +75,7 @@ class Container
         foreach ($reflectionParams as $param) {
             $classNameForArguments = $param->getClass()->getName();
 
-            $arguments[] = static::get($class);
+            $arguments[] = static::get($classNameForArguments);
         }
 
         if (empty($arguments)) {
