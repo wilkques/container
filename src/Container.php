@@ -50,6 +50,17 @@ class Container
     }
 
     /**
+     * @param string $abstract
+     * @param callable $closure
+     * 
+     * @return static
+     */
+    public function bind($abstract = null, $closure = null)
+    {
+        return $this->register($abstract, $closure);
+    }
+
+    /**
      * @param string|null $abstract
      * @param array $parameters
      * 
@@ -85,20 +96,22 @@ class Container
      */
     protected function fireAbstract($abstract)
     {
-        if ($class = $this->getMaps($abstract)) {
+        if (array_key_exists($abstract, $this->getMaps()) && $class = $this->getMaps($abstract)) {
             return $class;
         }
 
         $reflectionClass = new \ReflectionClass($abstract);
         $reflectionConstructor = $reflectionClass->getConstructor();
-        $reflectionParams = $reflectionConstructor->getParameters();
+        $reflectionConstructor && $reflectionParams = $reflectionConstructor->getParameters();
 
         $arguments = [];
 
-        foreach ($reflectionParams as $param) {
-            $classNameForArguments = $param->getClass()->getName();
+        if ($reflectionConstructor) {
+            foreach ($reflectionParams as $param) {
+                $classNameForArguments = $param->getClass()->getName();
 
-            $arguments[] = $this->get($classNameForArguments);
+                $arguments[] = $this->get($classNameForArguments);
+            }
         }
 
         return $this->registerWithResolve(
@@ -157,7 +170,7 @@ class Container
     /**
      * @param string|null $key
      * 
-     * @return array
+     * @return mixed
      */
     public function getMaps($key = null)
     {
