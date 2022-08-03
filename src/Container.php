@@ -68,8 +68,6 @@ class Container
      */
     protected function resolve($abstract = null, $parameters = [])
     {
-        $abstract = $this->getAlias($abstract);
-
         if (empty($parameters)) {
             return $this->fireAbstract($abstract);
         }
@@ -87,6 +85,10 @@ class Container
      */
     protected function fireAbstract($abstract)
     {
+        if ($class = $this->getMaps($abstract)) {
+            return $class;
+        }
+
         $reflectionClass = new \ReflectionClass($abstract);
         $reflectionConstructor = $reflectionClass->getConstructor();
         $reflectionParams = $reflectionConstructor->getParameters();
@@ -137,19 +139,6 @@ class Container
             $className,
             $class
         )->get($className);
-    }
-
-    /**
-     * Get the alias for an abstract if available.
-     *
-     * @param  string  $abstract
-     * @return string
-     */
-    public function getAlias($abstract)
-    {
-        return isset(static::$aliases[$abstract])
-            ? $this->getAlias($this->getMaps($abstract))
-            : $abstract;
     }
 
     /**
