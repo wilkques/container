@@ -42,7 +42,7 @@ class Container
      */
     public function get($className)
     {
-        if (class_exists($className, true) && !array_key_exists($className, $this->getMaps())) {
+        if (!array_key_exists($className, $this->getMaps())) {
             return $this->resolve($className);
         }
 
