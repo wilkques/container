@@ -10,27 +10,29 @@ namespace Wilkques\Container;
 class Container
 {
     /** @var array */
-    protected static $map = [];
+    protected static $aliases = [];
 
     /**
      * @param string|array $className
      * @param object|callable|Closure|null $object
+     * 
+     * @return static|null
      */
-    public static function register($className, $object = null)
+    public function register($className, $object = null)
     {
         if (is_array($className)) {
             array_map(function ($item) {
                 call_user_func_array(array(get_called_class(), 'register'), $item);
             }, $className);
 
-            return;
+            return $this;
         }
 
         if (is_callable($object)) {
             $object = $object();
         }
 
-        static::$map[$className] = $object;
+        return $this->setMaps($className, $object);
     }
 
     /**
@@ -38,35 +40,54 @@ class Container
      * 
      * @return mixed
      */
-    public static function get($className)
+    public function get($className)
     {
-        if (!class_exists($className, true)) {
-            return null;
+        if (class_exists($className, true) && !array_key_exists($className, $this->getMaps())) {
+            return $this->resolve($className);
         }
 
-        if (class_exists($className, true) && !array_key_exists($className, static::getMaps())) {
-            return static::resolve($className);
-        }
-
-        return static::$map[$className];
+        return $this->getMaps($className);
     }
 
     /**
-     * @param string $className
+     * @param string|null $abstract
+     * @param array $parameters
      * 
-     * @return object
+     * @return mixed
      */
-    public static function resolve($className)
+    public function make($abstract = null, $parameters = [])
     {
-        if (!class_exists($className, true)) {
-            return null;
+        return $this->resolve($abstract, $parameters);
+    }
+
+    /**
+     * @param string $abstract
+     * @param array $parameters
+     * 
+     * @return mixed
+     */
+    protected function resolve($abstract = null, $parameters = [])
+    {
+        $abstract = $this->getAlias($abstract);
+
+        if (empty($parameters)) {
+            return $this->fireAbstract($abstract);
         }
 
-        if (array_key_exists($className, static::getMaps())) {
-            return static::$map[$className];
-        }
+        return $this->registerWithResolve(
+            $abstract,
+            new $abstract(...$this->fireParameters($parameters))
+        );
+    }
 
-        $reflectionClass = new \ReflectionClass($className);
+    /**
+     * @param string $abstract
+     * 
+     * @return mixed
+     */
+    protected function fireAbstract($abstract)
+    {
+        $reflectionClass = new \ReflectionClass($abstract);
         $reflectionConstructor = $reflectionClass->getConstructor();
         $reflectionParams = $reflectionConstructor->getParameters();
 
@@ -75,43 +96,94 @@ class Container
         foreach ($reflectionParams as $param) {
             $classNameForArguments = $param->getClass()->getName();
 
-            $arguments[] = static::get($classNameForArguments);
+            $arguments[] = $this->get($classNameForArguments);
         }
 
-        if (empty($arguments)) {
-            return static::registerWithResolve(
-                $classNameForArguments, 
-                new $classNameForArguments()
-            );
-        }
-
-        return static::registerWithResolve(
-            $className, 
+        return $this->registerWithResolve(
+            $abstract,
             $reflectionClass->newInstanceArgs($arguments)
         );
+    }
+
+    /**
+     * @param array $parameters
+     * 
+     * @return array
+     */
+    protected function fireParameters($parameters)
+    {
+        return array_map(function ($parameter) {
+            if (array_key_exists($parameter, $this->getMaps())) {
+                return $this->get($parameter);
+            }
+
+            if (class_exists($parameter)) {
+                return $this->get($parameter);
+            }
+
+            return $parameter;
+        }, $parameters);
     }
 
     /**
      * @param string $className
      * @param object $class
      * 
-     * @return object
+     * @return mixed
      */
-    public static function registerWithResolve($className, $class)
+    public function registerWithResolve($className, $class)
     {
-        static::register(
+        return $this->register(
             $className,
             $class
-        );
-
-        return static::get($className);
+        )->get($className);
     }
 
     /**
+     * Get the alias for an abstract if available.
+     *
+     * @param  string  $abstract
+     * @return string
+     */
+    public function getAlias($abstract)
+    {
+        return isset(static::$aliases[$abstract])
+            ? $this->getAlias($this->getMaps($abstract))
+            : $abstract;
+    }
+
+    /**
+     * @param string $key
+     * @param mixed $value
+     * 
+     * @return static
+     */
+    public function setMaps($key, $value)
+    {
+        static::$aliases[$key] = $value;
+
+        return $this;
+    }
+
+    /**
+     * @param string|null $key
+     * 
      * @return array
      */
-    public static function getMaps()
+    public function getMaps($key = null)
     {
-        return static::$map;
+        if (!is_null($key)) {
+            return static::$aliases[$key];
+        }
+
+        return static::$aliases;
+    }
+
+    /**
+     * @return static
+     */
+    public static function getInstance()
+    {
+        return new static;
     }
 }

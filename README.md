@@ -4,6 +4,7 @@
 [![License](https://poser.pugx.org/wilkques/container/license)](https://packagist.org/packages/wilkques/container)
 
 ## How to use
+`composer require wilkques/container`
 
 ```php
 
