@@ -13,17 +13,17 @@ class Container
     protected static $aliases = [];
 
     /**
-     * @param string|array $className
+     * @param string|array $abstract
      * @param object|callable|Closure|null $object
      * 
      * @return static|null
      */
-    public function register($className, $object = null)
+    public function register($abstract, $object = null)
     {
-        if (is_array($className)) {
+        if (is_array($abstract)) {
             array_map(function ($item) {
                 call_user_func_array(array(get_called_class(), 'register'), $item);
-            }, $className);
+            }, $abstract);
 
             return $this;
         }
@@ -32,21 +32,21 @@ class Container
             $object = $object();
         }
 
-        return $this->setMaps($className, $object);
+        return $this->setMaps($abstract, $object);
     }
 
     /**
-     * @param string $className
+     * @param string $abstract
      * 
      * @return mixed
      */
-    public function get($className)
+    public function get($abstract)
     {
-        if (!array_key_exists($className, $this->getMaps())) {
-            return $this->resolve($className);
+        if (!array_key_exists($abstract, $this->getMaps())) {
+            return $this->resolve($abstract);
         }
 
-        return $this->getMaps($className);
+        return $this->getMaps($abstract);
     }
 
     /**
@@ -108,9 +108,19 @@ class Container
 
         if ($reflectionConstructor) {
             foreach ($reflectionParams as $param) {
-                $classNameForArguments = $param->getClass()->getName();
+                if ($param->isDefaultValueAvailable()) {
+                    $arguments[] = $param->getDefaultValue();
+                }
+                
+                if ($class = $param->getClass()) {
+                    $classNameForArguments = $class->getName();
 
-                $arguments[] = $this->get($classNameForArguments);
+                    $arguments[] = $this->get($classNameForArguments);
+                }
+
+                if ($param->isArray()) {
+                    $arguments[] = [];
+                }
             }
         }
 
@@ -141,17 +151,17 @@ class Container
     }
 
     /**
-     * @param string $className
+     * @param string $abstract
      * @param object $class
      * 
      * @return mixed
      */
-    public function registerWithResolve($className, $class)
+    public function registerWithResolve($abstract, $class)
     {
         return $this->register(
-            $className,
+            $abstract,
             $class
-        )->get($className);
+        )->get($abstract);
     }
 
     /**
