@@ -51,12 +51,20 @@ class Container
 
     /**
      * @param string $abstract
-     * @param callable $closure
+     * @param callable|string|array $closure
      * 
      * @return static
      */
     public function bind($abstract = null, $closure = null)
     {
+        if (is_string($closure)) {
+            $closure = array($closure);
+        }
+
+        if (is_array($closure)) {
+            $closure = $this->make($abstract, $closure);
+        }
+
         return $this->register($abstract, $closure);
     }
 
@@ -96,8 +104,8 @@ class Container
      */
     protected function fireAbstract($abstract)
     {
-        if (array_key_exists($abstract, $this->getMaps()) && $class = $this->getMaps($abstract)) {
-            return $class;
+        if (array_key_exists($abstract, $this->getMaps()) && $abstract = $this->getMaps($abstract)) {
+            return $abstract;
         }
 
         $reflectionClass = new \ReflectionClass($abstract);
