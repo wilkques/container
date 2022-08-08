@@ -74,7 +74,7 @@ class Container
      * 
      * @return mixed
      */
-    public function make($abstract = null, $parameters = [])
+    public function make($abstract = null, $parameters = array())
     {
         return $this->resolve($abstract, $parameters);
     }
@@ -85,7 +85,7 @@ class Container
      * 
      * @return mixed
      */
-    protected function resolve($abstract = null, $parameters = [])
+    protected function resolve($abstract = null, $parameters = array())
     {
         if (empty($parameters)) {
             return $this->fireAbstract($abstract);
@@ -115,19 +115,19 @@ class Container
         $arguments = [];
 
         if ($reflectionConstructor) {
-            foreach ($reflectionParams as $param) {
+            foreach ($reflectionParams as $key => $param) {
                 if ($param->isDefaultValueAvailable()) {
-                    $arguments[] = $param->getDefaultValue();
+                    $arguments[$key] = $param->getDefaultValue();
                 }
-                
+
                 if ($class = $param->getClass()) {
                     $classNameForArguments = $class->getName();
 
-                    $arguments[] = $this->get($classNameForArguments);
+                    $arguments[$key] = $this->get($classNameForArguments);
                 }
 
                 if ($param->isArray()) {
-                    $arguments[] = [];
+                    $arguments[$key] = array();
                 }
             }
         }
@@ -146,11 +146,11 @@ class Container
     protected function fireParameters($parameters)
     {
         return array_map(function ($parameter) {
-            if (array_key_exists($parameter, $this->getMaps())) {
+            if (is_string($parameter) && array_key_exists($parameter, $this->getMaps())) {
                 return $this->get($parameter);
             }
 
-            if (class_exists($parameter)) {
+            if (is_string($parameter) && class_exists($parameter)) {
                 return $this->get($parameter);
             }
 
