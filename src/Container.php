@@ -32,7 +32,9 @@ class Container
             $object = $object();
         }
 
-        return $this->setMaps($abstract, $object);
+        static::setAlias($abstract, $object);
+
+        return $this;
     }
 
     /**
@@ -42,11 +44,11 @@ class Container
      */
     public function get($abstract)
     {
-        if (!array_key_exists($abstract, $this->getMaps())) {
+        if (!array_key_exists($abstract, static::getAliases())) {
             return $this->resolve($abstract);
         }
 
-        return $this->getMaps($abstract);
+        return static::getAlias($abstract);
     }
 
     /**
@@ -76,6 +78,10 @@ class Container
      */
     public function make($abstract = null, $parameters = array())
     {
+        if (array_key_exists($abstract, static::getAliases())) {
+            return static::getAlias($abstract);
+        }
+
         return $this->resolve($abstract, $parameters);
     }
 
@@ -104,7 +110,7 @@ class Container
      */
     protected function fireAbstract($abstract)
     {
-        if (array_key_exists($abstract, $this->getMaps()) && $abstract = $this->getMaps($abstract)) {
+        if (array_key_exists($abstract, static::getAliases()) && $abstract = static::getAlias($abstract)) {
             return $abstract;
         }
 
@@ -146,7 +152,7 @@ class Container
     protected function fireParameters($parameters)
     {
         return array_map(function ($parameter) {
-            if (is_string($parameter) && array_key_exists($parameter, $this->getMaps())) {
+            if (is_string($parameter) && array_key_exists($parameter, static::getAliases())) {
                 return $this->get($parameter);
             }
 
@@ -173,29 +179,31 @@ class Container
     }
 
     /**
-     * @param string $key
-     * @param mixed $value
+     * @param string $abstract
+     * @param mixed $object
      * 
      * @return static
      */
-    public function setMaps($key, $value)
+    public static function setAlias($abstract, $object)
     {
-        static::$aliases[$key] = $value;
-
-        return $this;
+        static::$aliases[$abstract] = $object;
     }
 
     /**
-     * @param string|null $key
+     * @param string|null $abstract
      * 
      * @return mixed
      */
-    public function getMaps($key = null)
+    public static function getAlias($abstract = null)
     {
-        if (!is_null($key)) {
-            return static::$aliases[$key];
-        }
+        return static::getAliases()[$abstract];
+    }
 
+    /**
+     * @return array
+     */
+    public static function getAliases()
+    {
         return static::$aliases;
     }
 
