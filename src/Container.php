@@ -9,16 +9,20 @@ namespace Wilkques\Container;
  */
 class Container
 {
-    /** @var array */
+    /** 
+     * @var array
+     */
     protected static $aliases = array();
 
     /**
+     * Register a abstract with the container.
+     *
      * @param string|array $abstract
-     * @param object|callable|\Closure|null $object
+     * @param object|callable|\Closure|null $concrete
      * 
      * @return static
      */
-    public function register($abstract, $object = null)
+    public function register($abstract, $concrete = null)
     {
         if (is_array($abstract)) {
             foreach ($abstract as $item) {
@@ -28,22 +32,53 @@ class Container
             return $this;
         }
 
-        if (is_string($object)) {
-            $object = array($object);
-        }
+        $concrete = $this->normalizeConcrete($concrete);
 
-        if (is_callable($object)) {
-            $object = $this->call($object);
-        }
+        $concrete = $this->resolveConcrete($abstract, $concrete);
 
-        if (is_array($object)) {
-            $object = $this->resolve($abstract, $object);
-        }
-
-        return $this->registAbstract($abstract, $object);
+        return $this->bindAbstract($abstract, $concrete);
     }
 
     /**
+     * Resolve the given abstract using the concrete value.
+     *
+     * @param string $abstract
+     * @param mixed $concrete
+     * 
+     * @return mixed
+     */
+    protected function resolveConcrete($abstract, $concrete)
+    {
+        if (is_callable($concrete)) {
+            return $this->call($concrete);
+        }
+
+        if (is_array($concrete)) {
+            return $this->resolve($abstract, $concrete);
+        }
+
+        return $concrete;
+    }
+
+    /**
+     * Normalize the concrete value to an array.
+     *
+     * @param mixed $concrete
+     * 
+     * @return array
+     */
+    protected function normalizeConcrete($concrete)
+    {
+        if (is_string($concrete)) {
+            return array($concrete);
+        }
+
+        return $concrete;
+    }
+
+    /**
+     * Resolve the given abstract from the container.
+     * 
      * @param string $abstract
      * 
      * @return mixed
@@ -58,51 +93,51 @@ class Container
     }
 
     /**
+     * Bind a new instance of a type into the container.
+     * 
      * @param string $abstract
-     * @param callable|string|array $callable
+     * @param callable|string|array $concrete 
      * 
      * @return static
      */
-    public function bind($abstract, $callable = null)
+    public function bind($abstract, $concrete  = null)
     {
-        if (is_string($callable)) {
-            $callable = array($callable);
-        }
+        $concrete = $this->normalizeConcrete($concrete);
 
-        if (is_callable($callable)) {
-            $callable = $this->call($callable);
-        }
+        $concrete = $this->resolveConcrete($abstract, $concrete);
 
-        if (is_array($callable)) {
-            $callable = $this->resolve($abstract, $callable);
-        }
-
-        return $this->register($abstract, $callable);
+        return $this->register($abstract, $concrete);
     }
 
     /**
+     * Resolve the given abstract from the container.
+     * 
      * @param string $abstract
-     * @param array $parameters
+     * @param array $arguments
      * 
      * @return mixed
      */
-    public function make($abstract, $parameters = array())
+    public function make($abstract, $arguments = array())
     {
-        return $this->resolve($abstract, $parameters);
+        return $this->resolve($abstract, $arguments);
     }
 
     /**
+     * Resolve the given abstract from the container.
+     * 
      * @param string $abstract
-     * @param array $parameters
+     * @param array $arguments
      * 
      * @return mixed
      */
-    protected function resolve($abstract, $parameters = array())
+    protected function resolve($abstract, $arguments = array())
     {
-        return $this->fireAbstract($abstract, "__construct", $parameters);
+        return $this->fireAbstract($abstract, "__construct", $arguments);
     }
 
     /**
+     * Check if the given method is the constructor.
+     * 
      * @param string $method
      * 
      * @return bool
@@ -113,6 +148,8 @@ class Container
     }
 
     /**
+     * Check if the container has a binding for the given abstract.
+     * 
      * @param string $abstract
      * 
      * @return bool
@@ -123,6 +160,8 @@ class Container
     }
 
     /**
+     * Invoke the given method on the resolved instance.
+     * 
      * @param string $abstract
      * @param string $method
      * @param array $arguments
@@ -141,6 +180,8 @@ class Container
     }
 
     /**
+     * Fire the method for the given reflection class.
+     * 
      * @param \ReflectionClass $reflectionClass
      * @param string $method
      * @param array $arguments
@@ -159,6 +200,8 @@ class Container
     }
 
     /**
+     * Fire the constructor for the given abstract.
+     * 
      * @param bool $isCallConstructMethod
      * @param \ReflectionClass $reflectionClass
      * @param string $abstract
@@ -184,6 +227,8 @@ class Container
     }
 
     /**
+     * Fire the given abstract.
+     * 
      * @param string $abstract
      * @param string $method
      * @param array $arguments
@@ -208,43 +253,35 @@ class Container
     }
 
     /**
-     * @param \ReflectionMethod $reflection
+     * Resolve the constructor or method arguments.
+     * 
+     * @param \ReflectionMethod $reflectionMethod
      * @param array $arguments
      * 
      * @return array
      */
-    protected function fireArguments($reflection, $arguments = array())
+    protected function fireArguments($reflectionMethod, $arguments = array())
     {
-        $reflectionParams = $reflection->getParameters();
+        $resolvedArgs = array();
 
-        foreach ($reflectionParams as $key => $param) {
-            $arg = $param->getName();
+        foreach ($reflectionMethod->getParameters() as $parameter) {
+            $paramName = $parameter->getName();
 
             // give value
-            if (array_key_exists($arg, $arguments)) {
-                $arguments[$key] = $arguments[$arg];
+            if (array_key_exists($paramName, $arguments)) {
+                $resolvedArgs[] = $arguments[$paramName];
 
-                unset($arguments[$arg]);
-
-                continue;
-            }
-
-            if ($param->isDefaultValueAvailable()) {
-                $arguments[$key] = $param->getDefaultValue();
-            }
-
-            if ($class = $param->getClass()) {
-                $classNameForArguments = $class->getName();
-
-                $arguments[$key] = $this->get($classNameForArguments);
-            }
-
-            if ($param->isArray()) {
-                $arguments[$key] = array();
+                unset($arguments[$paramName]);
+            } else if ($paramClass = $parameter->getClass()) {
+                $resolvedArgs[] = $this->get($paramClass->getName());
+            } else if ($parameter->isArray()) {
+                $resolvedArgs[] = array();
+            } else if ($parameter->isDefaultValueAvailable()) {
+                $resolvedArgs[] = $parameter->getDefaultValue();
             }
         }
 
-        return $arguments;
+        return array_merge($resolvedArgs, array_values($arguments));
     }
 
     /**
@@ -261,17 +298,21 @@ class Container
     }
 
     /**
+     * Invoke the given callable or closure with the given arguments.
+     * 
      * @param \Closure $callable
      * @param array $arguments
      * 
      * @return mixed
      */
-    protected function fireClosure($callable, array $arguments = array())
+    protected function invokeCallable($callable, array $arguments = array())
     {
         return call_user_func_array($callable, $this->fireFunction($callable, $arguments));
     }
 
     /**
+     * Call the given callable or closure.
+     * 
      * @param array|\Closure $callable
      * @param array $arguments
      * 
@@ -280,12 +321,14 @@ class Container
     public function call($callable, array $arguments = array())
     {
         if ($callable instanceof \Closure) {
-            return $this->fireClosure($callable, $arguments);
+            return $this->invokeCallable($callable, $arguments);
         }
 
         $abstract = array_shift($callable);
 
-        is_object($abstract) && $abstract = get_class($abstract);
+        if (is_object($abstract)) {
+            $abstract = get_class($abstract);
+        }
 
         $method = array_shift($callable);
 
@@ -293,12 +336,14 @@ class Container
     }
 
     /**
+     * Bind a new instance of a type into the container.
+     * 
      * @param string $key
      * @param mixed $object
      * 
      * @return static
      */
-    public function registAbstract($abstract, $object)
+    public function bindAbstract($abstract, $object)
     {
         static::$aliases[$abstract] = $object;
 
@@ -306,6 +351,8 @@ class Container
     }
 
     /**
+     * Get the resolved aliases.
+     * 
      * @param string|null $abstract
      * 
      * @return mixed
@@ -320,6 +367,8 @@ class Container
     }
 
     /**
+     * Get the container instance.
+     * 
      * @return static
      */
     public static function getInstance()
