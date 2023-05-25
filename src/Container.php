@@ -22,7 +22,7 @@ class Container
     {
         if (is_array($abstract)) {
             foreach ($abstract as $item) {
-                call_user_func_array(array($this, 'register'), $item);
+                $this->register($item);
             }
 
             return $this;
