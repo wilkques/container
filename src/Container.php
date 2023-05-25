@@ -200,7 +200,9 @@ class Container
 
         $this->fireConstruct($this->isConstructMethod($method), $reflectionClass, $abstract, $arguments);
 
-        $arguments = $this->fireMethod($reflectionClass, $method, $arguments);
+        if (!$this->isConstructMethod($method)) {
+            $arguments = $this->fireMethod($reflectionClass, $method, $arguments);
+        }
 
         return $this->invokeMethod($abstract, $method, $arguments);
     }
