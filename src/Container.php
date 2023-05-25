@@ -262,26 +262,24 @@ class Container
      */
     protected function fireArguments($reflectionMethod, $arguments = array())
     {
-        $resolvedArgs = array();
-
         foreach ($reflectionMethod->getParameters() as $parameter) {
             $paramName = $parameter->getName();
 
             // give value
             if (array_key_exists($paramName, $arguments)) {
-                $resolvedArgs[] = $arguments[$paramName];
+                $arguments[] = $arguments[$paramName];
 
                 unset($arguments[$paramName]);
             } else if ($paramClass = $parameter->getClass()) {
-                $resolvedArgs[] = $this->get($paramClass->getName());
+                $arguments[] = $this->get($paramClass->getName());
             } else if ($parameter->isArray()) {
-                $resolvedArgs[] = array();
+                $arguments[] = array();
             } else if ($parameter->isDefaultValueAvailable()) {
-                $resolvedArgs[] = $parameter->getDefaultValue();
+                $arguments[] = $parameter->getDefaultValue();
             }
         }
 
-        return array_merge($resolvedArgs, array_values($arguments));
+        return $arguments;
     }
 
     /**
