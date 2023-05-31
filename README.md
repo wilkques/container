@@ -17,30 +17,12 @@ require '<project path>/vendor/Container/src/Container.php';
 1. `register`
 
 	```php
-	\Wilkques\Container\Container::register(
-	'<your class name>',
-	new '<your class name>'
-	);
-
 	container()->register(
 	'<your class name>',
 	new '<your class name>'
 	);
 
 	// or
-
-	\Wilkques\Container\Container::register([
-		[
-			'<your class name1>',
-			new '<your class name1>'
-		],
-		[
-			'<your class name2>',
-			new '<your class name2>'
-		],
-
-		...
-	]);
 
 	container()->register([
 		[
@@ -61,13 +43,27 @@ require '<project path>/vendor/Container/src/Container.php';
 
 	$abstract = new \Your\Class\Name;
 
-	\Wilkques\Container\Container::bind('<your class name>', function () use ($abstract) {
+	container()->bind('<your class name>', function () use ($abstract) {
 		return $abstract;
 	});
+	```
 
-	// or
+1. `singleton`
+	The singleton method binds a class or interface into the container that should only be resolved one time. Once a singleton binding is resolved, the same object instance will be returned on subsequent calls into the container:
+	```php
+	$abstract = new \Your\Class\Name;
 
-	container()->bind('<your class name>', function () use ($abstract) {
+	container()->singleton('<your class name>', function () use ($abstract) {
+		return $abstract;
+	});
+	```
+
+1. `scoped`
+	The scoped method binds a class or interface into the container that should only be resolved one time within a given Laravel request / job lifecycle. While this method is similar to the singleton method, instances registered using the scoped method will be flushed whenever the Laravel application starts a new "lifecycle"
+	```php
+	$abstract = new \Your\Class\Name;
+
+	container()->scoped('<your class name>', function () use ($abstract) {
 		return $abstract;
 	});
 	```
@@ -75,20 +71,12 @@ require '<project path>/vendor/Container/src/Container.php';
 1. `get`
 
 	```php
-	\Wilkques\Container\Container::get('<your class name>');
-
-	// or
-
 	container()->get('<your class name>');
 	```
 
 1. `make`
 
 	```php
-	\Wilkques\Container\Container::make('<your class name>');
-
-	// or
-
 	container('<your class name>');
 
 	// or
@@ -98,20 +86,6 @@ require '<project path>/vendor/Container/src/Container.php';
 
 1. `call`
 	```php
-	\Wilkques\Container\Container::call(['<your class name>', '<your class method name>'], ['<your class method vars name>' => '<your class method vars value>']);
-
-	// or
-
-	\Wilkques\Container\Container::call([new '<your class name>', '<your class method name>'], ['<your class method vars name>' => '<your class method vars value>']);
-
-	// or
-
-	\Wilkques\Container\Container::call(function (\Your\Class\Name $abstract) {
-		// do something
-	});
-
-	// or
-
 	container()->call(['<your class name>', '<your class method name>'], ['<your class method vars name>' => '<your class method vars value>']);
 
 	// or
@@ -124,3 +98,17 @@ require '<project path>/vendor/Container/src/Container.php';
 		// do something
 	});
 	```
+
+1. `forgetScopedInstances`
+	Clear all of the scoped instances from the container.
+
+1. `forgetInstance`
+	```php
+	container()->forgetInstance('<your class name>');
+	```
+
+1. `forgetInstances`
+	Clear all of the instances from the container.
+
+1. `flush`
+	Flush the container of all bindings and resolved instances.
