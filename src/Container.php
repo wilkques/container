@@ -171,7 +171,7 @@ class Container
      */
     public function forgetInstances()
     {
-        static::$aliases = [];
+        static::$aliases = array();
 
         return $this;
     }
@@ -251,7 +251,7 @@ class Container
      * 
      * @return bool
      */
-    protected function isShared(string $abstract)
+    protected function isShared($abstract)
     {
         if (!isset($this->bindings[$abstract])) {
             return false;
@@ -470,9 +470,9 @@ class Container
      */
     public function flush()
     {
-        static::$aliases = [];
-        $this->bindings = [];
-        $this->scopedInstances = [];
+        static::$aliases = array();
+        $this->bindings = array();
+        $this->scopedInstances = array();
     }
 
     /**
