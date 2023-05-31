@@ -15,6 +15,16 @@ class Container
     protected static $aliases = array();
 
     /**
+     * @var array
+     */
+    protected $bindings = array();
+
+    /**
+     * @var array
+     */
+    protected $scopedInstances = array();
+
+    /**
      * Register a abstract with the container.
      *
      * @param string|array $abstract
@@ -96,17 +106,88 @@ class Container
      * Bind a new instance of a type into the container.
      * 
      * @param string $abstract
-     * @param callable|string|array $concrete 
+     * @param callable|string|array $concrete
+     * @param bool $share
      * 
      * @return static
      */
-    public function bind($abstract, $concrete  = null)
+    public function bind($abstract, $concrete  = null, $share = false)
     {
         $concrete = $this->normalizeConcrete($concrete);
 
         $concrete = $this->resolveConcrete($abstract, $concrete);
 
         return $this->register($abstract, $concrete);
+    }
+
+    /**
+     * Register a shared binding in the container.
+     *
+     * @param  string  $abstract
+     * @param  \Closure|string|null  $concrete
+     * 
+     * @return static
+     */
+    public function singleton($abstract, $concrete)
+    {
+        $this->bindings[$abstract] = true;
+
+        return $this->register($abstract, $concrete);
+    }
+
+    /**
+     * Register a scoped binding in the container.
+     *
+     * @param  string  $abstract
+     * @param  \Closure|string|null  $concrete
+     * 
+     * @return static
+     */
+    public function scoped($abstract, $concrete)
+    {
+        $this->scopedInstances[] = $abstract;
+
+        return $this->singleton($abstract, $concrete);
+    }
+
+    /**
+     * Remove a resolved instance from the instance cache.
+     *
+     * @param  string  $abstract
+     * 
+     * @return static
+     */
+    public function forgetInstance($abstract)
+    {
+        unset(static::$aliases[$abstract]);
+
+        return $this;
+    }
+
+    /**
+     * Clear all of the instances from the container.
+     *
+     * @return static
+     */
+    public function forgetInstances()
+    {
+        static::$aliases = [];
+
+        return $this;
+    }
+
+    /**
+     * Clear all of the scoped instances from the container.
+     *
+     * @return static
+     */
+    public function forgetScopedInstances()
+    {
+        foreach ($this->scopedInstances as $scoped) {
+            $this->forgetInstance($scoped);
+        }
+
+        return $this;
     }
 
     /**
@@ -119,6 +200,10 @@ class Container
      */
     public function make($abstract, $arguments = array())
     {
+        if ($this->isShared($abstract) && $this->hasAbstract($abstract)) {
+            return $this->get($abstract);
+        }
+
         return $this->resolve($abstract, $arguments);
     }
 
@@ -144,7 +229,7 @@ class Container
      */
     protected function isConstructMethod($method)
     {
-        return $method === "__construct";
+        return "__construct" === $method;
     }
 
     /**
@@ -157,6 +242,22 @@ class Container
     protected function hasAbstract($abstract)
     {
         return array_key_exists($abstract, $this->resolveAbstract());
+    }
+
+    /**
+     * check abstract is shared
+     * 
+     * @param string $abstract
+     * 
+     * @return bool
+     */
+    protected function isShared(string $abstract)
+    {
+        if (!isset($this->bindings[$abstract])) {
+            return false;
+        }
+
+        return $this->bindings[$abstract];
     }
 
     /**
@@ -213,23 +314,23 @@ class Container
     {
         $instanceArgs = array();
 
-        if ($isCallConstructMethod)
+        if ($isCallConstructMethod) {
             $instanceArgs = $arguments;
+        }
 
         $constructMethodName = "__construct";
 
-        $arguments = $this->fireMethod($reflectionClass, $constructMethodName, $instanceArgs);
+        if ($reflectionClass->hasMethod($constructMethodName)) {
+            $instanceArgs = $this->fireMethod($reflectionClass, $constructMethodName, $instanceArgs);
+        }
 
-        if ($reflectionClass->hasMethod($constructMethodName))
-            return $this->register($abstract, $reflectionClass->newInstanceArgs($arguments));
-
-        return $this->register($abstract, new $abstract);
+        return $this->register($abstract, $reflectionClass->newInstanceArgs($instanceArgs));
     }
 
     /**
      * Fire the given abstract.
      * 
-     * @param string $abstract
+     * @param string|object $abstract
      * @param string $method
      * @param array $arguments
      * 
@@ -237,10 +338,6 @@ class Container
      */
     protected function fireAbstract($abstract, $method = "__construct", $arguments = array())
     {
-        if ($this->hasAbstract($abstract)) {
-            return $this->invokeMethod($abstract, $method, $arguments);
-        }
-
         $reflectionClass = new \ReflectionClass($abstract);
 
         $this->fireConstruct($this->isConstructMethod($method), $reflectionClass, $abstract, $arguments);
@@ -255,14 +352,14 @@ class Container
     /**
      * Resolve the constructor or method arguments.
      * 
-     * @param \ReflectionMethod $reflectionMethod
+     * @param \ReflectionMethod|\ReflectionFunction $reflectionMethodOrFunction
      * @param array $arguments
      * 
      * @return array
      */
-    protected function fireArguments($reflectionMethod, $arguments = array())
+    protected function fireArguments($reflectionMethodOrFunction, $arguments = array())
     {
-        foreach ($reflectionMethod->getParameters() as $parameter) {
+        foreach ($reflectionMethodOrFunction->getParameters() as $parameter) {
             $paramName = $parameter->getName();
 
             // give value
@@ -283,7 +380,9 @@ class Container
     }
 
     /**
-     * @param \Closure $callable
+     * Fire the given function.
+     * 
+     * @param \Closure|string $callable
      * @param array $arguments
      * 
      * @return array
@@ -298,12 +397,12 @@ class Container
     /**
      * Invoke the given callable or closure with the given arguments.
      * 
-     * @param \Closure $callable
+     * @param \Closure|string $callable
      * @param array $arguments
      * 
      * @return mixed
      */
-    protected function invokeCallable($callable, array $arguments = array())
+    protected function invokeFunction($callable, array $arguments = array())
     {
         return call_user_func_array($callable, $this->fireFunction($callable, $arguments));
     }
@@ -311,15 +410,15 @@ class Container
     /**
      * Call the given callable or closure.
      * 
-     * @param array|\Closure $callable
+     * @param array|string|\Closure $callable
      * @param array $arguments
      * 
      * @return mixed
      */
     public function call($callable, array $arguments = array())
     {
-        if ($callable instanceof \Closure) {
-            return $this->invokeCallable($callable, $arguments);
+        if (is_string($callable) || $callable instanceof \Closure) {
+            return $this->invokeFunction($callable, $arguments);
         }
 
         $abstract = array_shift($callable);
@@ -330,7 +429,7 @@ class Container
 
         $method = array_shift($callable);
 
-        return $this->fireAbstract($abstract, $method,  $arguments);
+        return $this->fireAbstract($abstract, $method, $arguments);
     }
 
     /**
@@ -365,12 +464,32 @@ class Container
     }
 
     /**
+     * Flush the container of all bindings and resolved instances.
+     *
+     * @return void
+     */
+    public function flush()
+    {
+        static::$aliases = [];
+        $this->bindings = [];
+        $this->scopedInstances = [];
+    }
+
+    /**
      * Get the container instance.
      * 
      * @return static
      */
     public static function getInstance()
     {
-        return new static;
+        $instance = new static;
+
+        $instanceName = get_class($instance);
+
+        if (!isset(static::$aliases[$instanceName])) {
+            static::$aliases[$instanceName] = $instance;
+        }
+
+        return static::$aliases[$instanceName];
     }
 }
