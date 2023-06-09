@@ -107,11 +107,10 @@ class Container
      * 
      * @param string $abstract
      * @param callable|string|array $concrete
-     * @param bool $share
      * 
      * @return static
      */
-    public function bind($abstract, $concrete  = null, $share = false)
+    public function bind($abstract, $concrete  = null)
     {
         $concrete = $this->normalizeConcrete($concrete);
 
@@ -217,7 +216,7 @@ class Container
      */
     protected function resolve($abstract, $arguments = array())
     {
-        return $this->fireAbstract($abstract, "__construct", $arguments);
+        return $this->fireAbstract($abstract, $arguments);
     }
 
     /**
@@ -264,12 +263,12 @@ class Container
      * Invoke the given method on the resolved instance.
      * 
      * @param string $abstract
-     * @param string $method
      * @param array $arguments
+     * @param string $method
      * 
      * @return mixed
      */
-    protected function invokeMethod($abstract, $method = "__construct", $arguments = array())
+    protected function invokeMethod($abstract, $arguments = array(), $method = "__construct")
     {
         $resolvedAbstract = $this->get($abstract);
 
@@ -284,12 +283,12 @@ class Container
      * Fire the method for the given reflection class.
      * 
      * @param \ReflectionClass $reflectionClass
-     * @param string $method
      * @param array $arguments
+     * @param string $method
      * 
      * @return array
      */
-    protected function fireMethod($reflectionClass, $method = "__construct", $arguments = array())
+    protected function fireMethod($reflectionClass, $arguments = array(), $method = "__construct")
     {
         if ($reflectionClass->hasMethod($method)) {
             $reflectionMethod = $reflectionClass->getMethod($method);
@@ -321,7 +320,7 @@ class Container
         $constructMethodName = "__construct";
 
         if ($reflectionClass->hasMethod($constructMethodName)) {
-            $instanceArgs = $this->fireMethod($reflectionClass, $constructMethodName, $instanceArgs);
+            $instanceArgs = $this->fireMethod($reflectionClass, $instanceArgs, $constructMethodName);
         }
 
         return $this->register($abstract, $reflectionClass->newInstanceArgs($instanceArgs));
@@ -331,22 +330,22 @@ class Container
      * Fire the given abstract.
      * 
      * @param string|object $abstract
-     * @param string $method
      * @param array $arguments
+     * @param string $method
      * 
      * @return mixed
      */
-    protected function fireAbstract($abstract, $method = "__construct", $arguments = array())
+    protected function fireAbstract($abstract, $arguments = array(), $method = "__construct")
     {
         $reflectionClass = new \ReflectionClass($abstract);
 
         $this->fireConstruct($this->isConstructMethod($method), $reflectionClass, $abstract, $arguments);
 
         if (!$this->isConstructMethod($method)) {
-            $arguments = $this->fireMethod($reflectionClass, $method, $arguments);
+            $arguments = $this->fireMethod($reflectionClass, $arguments, $method);
         }
 
-        return $this->invokeMethod($abstract, $method, $arguments);
+        return $this->invokeMethod($abstract, $arguments, $method);
     }
 
     /**
@@ -429,7 +428,7 @@ class Container
 
         $method = array_shift($callable);
 
-        return $this->fireAbstract($abstract, $method, $arguments);
+        return $this->fireAbstract($abstract, $arguments, $method);
     }
 
     /**
