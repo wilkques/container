@@ -59,7 +59,6 @@ require '<project path>/vendor/Container/src/Container.php';
 	```
 
 1. `scoped`
-	The scoped method binds a class or interface into the container that should only be resolved one time within a given Laravel request / job lifecycle. While this method is similar to the singleton method, instances registered using the scoped method will be flushed whenever the Laravel application starts a new "lifecycle"
 	```php
 	$abstract = new \Your\Class\Name;
 
