@@ -91,12 +91,12 @@ class Container
      * 
      * @param string $abstract
      * 
-     * @return mixed
+     * @return mixed|null
      */
     public function get($abstract)
     {
         if (!$this->hasAbstract($abstract)) {
-            return $this->resolve($abstract);
+            return null;
         }
 
         return $this->resolveAbstract($abstract);
@@ -367,7 +367,7 @@ class Container
 
                 unset($arguments[$paramName]);
             } else if ($paramClass = $parameter->getClass()) {
-                $arguments[] = $this->get($paramClass->getName());
+                $arguments[] = $this->make($paramClass->getName());
             } else if ($parameter->isArray()) {
                 $arguments[] = array();
             } else if ($parameter->isDefaultValueAvailable()) {
