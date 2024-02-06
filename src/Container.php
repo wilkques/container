@@ -366,6 +366,8 @@ class Container
                 $arguments[] = $arguments[$paramName];
 
                 unset($arguments[$paramName]);
+            } else if (array_key_exists($parameter->getPosition(), $arguments)) {
+                continue;
             } else if ($paramClass = $parameter->getClass()) {
                 $arguments[] = $this->make($paramClass->getName());
             } else if ($parameter->isArray()) {
