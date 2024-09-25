@@ -383,7 +383,7 @@ class Container
      */
     protected function fireTypeArgument($reflectionParameter)
     {
-        if (!class_exists('ReflectionNamedType')) {
+        if (!class_exists('ReflectionType')) {
             if ($paramClass = $reflectionParameter->getClass()) {
                 return $this->make($paramClass->getName());
             }
