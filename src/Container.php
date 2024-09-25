@@ -368,16 +368,58 @@ class Container
                 unset($arguments[$paramName]);
             } else if (array_key_exists($parameter->getPosition(), $arguments)) {
                 continue;
-            } else if ($paramClass = $parameter->getClass()) {
-                $arguments[] = $this->make($paramClass->getName());
-            } else if ($parameter->isArray()) {
-                $arguments[] = array();
-            } else if ($parameter->isDefaultValueAvailable()) {
-                $arguments[] = $parameter->getDefaultValue();
+            } else {
+                $arguments[] = $this->fireTypeArgument($parameter);
             }
         }
 
         return $arguments;
+    }
+
+    /**
+     * @param \ReflectionParameter $reflectionParameter
+     * 
+     * @return mixed
+     */
+    protected function fireTypeArgument($reflectionParameter)
+    {
+        if (!class_exists('ReflectionNamedType')) {
+            if ($paramClass = $reflectionParameter->getClass()) {
+                return $this->make($paramClass->getName());
+            }
+
+            if (!$reflectionParameter->isDefaultValueAvailable()) {
+                throw new \InvalidArgumentException('The parameter requires a default value.');
+            }
+
+            return $reflectionParameter->getDefaultValue();
+        }
+
+        $reflectionType = $reflectionParameter->getType();
+
+        if (!$reflectionType) return false;
+
+        if ($reflectionType instanceof \ReflectionNamedType) {
+            if ($reflectionType->isBuiltin()) {
+                if (!$reflectionParameter->isDefaultValueAvailable()) {
+                    throw new \InvalidArgumentException('The parameter requires a default value.');
+                }
+
+                return $reflectionParameter->getDefaultValue();
+            }
+
+            $abstract = $reflectionType->getName();
+
+            if (!class_exists($abstract)) {
+                throw new \InvalidArgumentException("Class {$abstract} not exists");
+            }
+
+            return $this->make($abstract);
+        }
+
+        if ($reflectionType instanceof \ReflectionUnionType || $reflectionType instanceof \ReflectionIntersectionType) {
+            throw new \InvalidArgumentException('Union type function signatures are not supported.');
+        }
     }
 
     /**
