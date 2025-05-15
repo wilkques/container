@@ -9,10 +9,15 @@ namespace Wilkques\Container;
  */
 class Container
 {
+    /**
+     * @var static
+     */
+    protected static $instance;
+
     /** 
      * @var array
      */
-    protected static $aliases = array();
+    protected $instances = array();
 
     /**
      * @var array
@@ -23,6 +28,11 @@ class Container
      * @var array
      */
     protected $scopedInstances = array();
+
+    public function __construct()
+    {
+        $this->bindAbstract(__CLASS__, $this);
+    }
 
     /**
      * Register a abstract with the container.
@@ -158,7 +168,7 @@ class Container
      */
     public function forgetInstance($abstract)
     {
-        unset(static::$aliases[$abstract]);
+        unset($this->instances[$abstract]);
 
         return $this;
     }
@@ -170,7 +180,7 @@ class Container
      */
     public function forgetInstances()
     {
-        static::$aliases = array();
+        $this->instances = array();
 
         return $this;
     }
@@ -199,11 +209,17 @@ class Container
      */
     public function make($abstract, $arguments = array())
     {
-        if ($this->isShared($abstract) && $this->hasAbstract($abstract)) {
+        if ($this->hasAbstract($abstract)) {
             return $this->get($abstract);
         }
 
-        return $this->resolve($abstract, $arguments);
+        $resolver = $this->resolve($abstract, $arguments);
+
+        if ($this->isShared($abstract)) {
+            $this->bindAbstract($abstract, $resolver);
+        }
+
+        return $resolver;
     }
 
     /**
@@ -485,14 +501,14 @@ class Container
     /**
      * Bind a new instance of a type into the container.
      * 
-     * @param string $key
+     * @param string $abstract
      * @param mixed $object
      * 
      * @return static
      */
     public function bindAbstract($abstract, $object)
     {
-        static::$aliases[$abstract] = $object;
+        $this->instances[$abstract] = $object;
 
         return $this;
     }
@@ -507,10 +523,10 @@ class Container
     public function resolveAbstract($abstract = null)
     {
         if (!is_null($abstract) && $this->hasAbstract($abstract)) {
-            return static::$aliases[$abstract];
+            return $this->instances[$abstract];
         }
 
-        return static::$aliases;
+        return $this->instances;
     }
 
     /**
@@ -520,7 +536,7 @@ class Container
      */
     public function flush()
     {
-        static::$aliases = array();
+        $this->instances = array();
         $this->bindings = array();
         $this->scopedInstances = array();
     }
@@ -532,14 +548,10 @@ class Container
      */
     public static function getInstance()
     {
-        $instance = new static;
-
-        $instanceName = get_class($instance);
-
-        if (!isset(static::$aliases[$instanceName])) {
-            static::$aliases[$instanceName] = $instance;
+        if (is_null(static::$instance)) {
+            static::$instance = new static;
         }
 
-        return static::$aliases[$instanceName];
+        return static::$instance;
     }
 }
