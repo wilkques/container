@@ -32,6 +32,8 @@ class Container
     public function __construct()
     {
         $this->bindAbstract(__CLASS__, $this);
+
+        $this->bindings[__CLASS__] = true;
     }
 
     /**
@@ -209,7 +211,7 @@ class Container
      */
     public function make($abstract, $arguments = array())
     {
-        if ($this->hasAbstract($abstract)) {
+        if ($this->isShared($abstract) && $this->hasAbstract($abstract)) {
             return $this->get($abstract);
         }
 
